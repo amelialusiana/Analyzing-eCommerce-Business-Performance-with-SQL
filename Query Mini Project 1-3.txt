@@ -1,0 +1,88 @@
+﻿* Membuat tabel yang berisi informasi pendapatan/revenue perusahaan total untuk masing-masing tahun (Hint: Revenue adalah harga barang dan juga biaya kirim. Pastikan juga melakukan filtering terhadap order status yang tepat untuk menghitung pendapatan)
+CREATE TABLE total_pendapatan AS 
+SELECT
+    EXTRACT (year from o.order_purchase_timestamp) as year,
+    SUM(revenue) as total_pendapatan
+FROM 
+(
+        SELECT
+                order_id,
+                sum(price+freight_value) as revenue
+        FROM order_items_dataset
+    GROUP BY 1
+) tmpA
+JOIN orders_dataset o
+ON tmpA.order_id = o.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY 1;
+
+
+* Membuat tabel yang berisi informasi jumlah cancel order total untuk masing-masing tahun (Hint: Perhatikan filtering terhadap order status yang tepat untuk menghitung jumlah cancel order)
+CREATE TABLE cancel_order AS 
+SELECT
+    EXTRACT (year from order_purchase_timestamp) as year,
+    COUNT(1) as jumlah_cancel
+FROM orders_dataset
+WHERE order_status = 'canceled'
+GROUP BY 1;
+
+
+* Membuat tabel yang berisi nama kategori produk yang memberikan pendapatan total tertinggi untuk masing-masing tahun (Hint: Perhatikan penggunaan window function dan juga filtering yang dilakukan)
+CREATE TABLE kategori_produk_pendapatan AS 
+SELECT
+        year,
+        product_category_name,
+        revenue
+FROM 
+(
+        SELECT
+            EXTRACT (year from o.order_purchase_timestamp) as year,        
+        p.product_category_name,
+                SUM(oi.price + oi.freight_value) as revenue,
+                RANK() OVER(partition by EXTRACT (year from o.order_purchase_timestamp) 
+                    order by SUM(oi.price + oi.freight_value) desc) as rk
+        FROM order_items_dataset as oi
+        JOIN orders_dataset as o ON o.order_id = oi.order_id
+        JOIN product_dataset as p ON p.product_id = oi.product_id
+        WHERE o.order_status = 'delivered'
+    GROUP BY 1,2
+) tmpB
+WHERE rk = 1;
+
+
+* Membuat tabel yang berisi nama kategori produk yang memiliki jumlah cancel order terbanyak untuk masing-masing tahun (Hint: Perhatikan penggunaan window function dan juga filtering yang dilakukan)
+CREATE TABLE kategori_produk_cancel AS 
+SELECT
+        year,
+        product_category_name,
+        jumlah_cancel
+FROM 
+(
+        SELECT
+                EXTRACT (year from o.order_purchase_timestamp) as year,
+        p.product_category_name,
+            COUNT(1) as jumlah_cancel,
+               RANK() over(partition by EXTRACT (year from o.order_purchase_timestamp)
+                    ORDER by COUNT(1) desc) as rk
+        FROM order_items_dataset as oi
+        JOIN orders_dataset o ON o.order_id = oi.order_id
+        JOIN product_dataset p ON p.product_id = oi.product_id
+        WHERE o.order_status = 'canceled'
+    GROUP BY 1,2
+) tmpC
+WHERE rk = 1;
+
+
+* Menggabungkan informasi-informasi yang telah didapatkan ke dalam satu tampilan tabel (Hint: Perhatikan teknik join yang dilakukan serta kolom-kolom yang dipilih)
+SELECT
+        a.year,
+        a.product_category_name as top_product_category,
+        a.revenue as pendapatan_per_category,
+        b.total_pendapatan as total_pendapatan_per_tahun,
+        c.product_category_name as most_canceled_product,
+        c.jumlah_cancel as cancel_per_category,
+        d.jumlah_cancel as total_cancel_per_tahun
+FROM kategori_produk_pendapatan a
+JOIN total_pendapatan b on a.year = b.year
+JOIN kategori_produk_cancel c on a.year = c.year
+JOIN cancel_order d on d.year = a.year;

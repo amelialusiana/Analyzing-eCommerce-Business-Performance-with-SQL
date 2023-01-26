@@ -1,0 +1,82 @@
+﻿CREATE TABLE customers_dataset(
+    customer_id varchar,
+    customer_unique_id varchar,
+    customer_zip_code_prefix int,
+    customer_city varchar,
+    customer_state varchar,
+    PRIMARY KEY(customer_id)
+);
+CREATE TABLE geolocation_dataset (
+    geolocation_zip_code_prefix int,
+    geolocation_lat varchar,
+    geolocation_lng varchar,
+    geolocation_city varchar,
+    geolocation_state varchar,
+);
+CREATE TABLE order_items_dataset (
+    order_id varchar,
+    order_item_id int,
+    product_id varchar,
+    seller_id varchar,
+    shipping_limit_date timestamp,
+    price numeric,
+    freight_value numeric,
+);
+CREATE TABLE order_payments_dataset (
+    order_id varchar,
+    payment_sequential int,
+    payment_type varchar,
+    payment_installment int,
+    payment_value numeric,
+);
+CREATE TABLE order_reviews_dataset (
+    review_id varchar,
+    order_id varchar,
+    review_score int,
+    review_comment_title varchar,
+    review_comment_message varchar,
+    review_creation_date date,
+    review_answer_timestamp timestamp,
+);
+CREATE TABLE orders_dataset (
+    order_id varchar,
+    customer_id varchar,
+    order_status varchar,
+    order_purchase_timestamp timestamp,
+    order_approved_at timestamp,
+    order_delivered_carrier_date timestamp,
+    order_delivered_customer_date timestamp,
+    order_estimated_delivery_date date,
+    PRIMARY KEY(order_id)
+);
+CREATE TABLE product_dataset (
+    product_id varchar,
+    product_category_name varchar,
+    product_name_lenght int,
+    product_description_lenght int,
+    product_photos_qty int,
+    product_weight_g int,
+    product_length_cm int,
+    product_height_cm int,
+    product_width_cm int,
+    PRIMARY KEY(product_id)
+);
+CREATE TABLE sellers_dataset (
+    seller_id varchar,
+    seller_zip_code_prefix int,
+    seller_city varchar,
+    seller_state varchar,
+    PRIMARY KEY(seller_id)
+);
+ALTER TABLE order_items_dataset
+    ADD FOREIGN KEY (seller_id) REFERENCES sellers_dataset (seller_id);
+ALTER TABLE order_items_dataset
+    ADD FOREIGN KEY (product_id) REFERENCES product_dataset (product_id);
+ALTER TABLE order_items_dataset
+    ADD FOREIGN KEY (order_id) REFERENCES orders_dataset (order_id);
+ALTER TABLE orders_dataset
+    ADD FOREIGN KEY (customer_id) REFERENCES customers_dataset (customer_id);
+ALTER TABLE order_reviews_dataset
+    ADD FOREIGN KEY (order_id) REFERENCES orders_dataset (order_id);
+ALTER TABLE order_payments_dataset
+    ADD FOREIGN KEY (order_id) REFERENCES orders_dataset (order_id);

@@ -1,0 +1,89 @@
+﻿* Menampilkan rata-rata jumlah customer aktif bulanan (monthly active user) untuk setiap tahun (Hint: Perhatikan kesesuaian format tanggal)
+
+
+CREATE TABLE customer_aktif AS
+SELECT
+	year,
+	avg(mau) as average_mau
+FROM
+(
+	SELECT
+    		extract (year from order_purchase_timestamp) as year,
+    		extract (month from order_purchase_timestamp) as month,
+    		COUNT (DISTINCT customer_unique_id) as mau
+	FROM orders_dataset o
+	JOIN customers_dataset c
+	ON o.customer_id = c.customer_id
+	GROUP BY 1,2
+) tmpA
+GROUP BY 1;
+
+* Menampilkan jumlah customer baru pada masing-masing tahun (Hint: Pelanggan baru adalah pelanggan yang melakukan order pertama kali)
+
+CREATE TABLE customer_baru AS
+SELECT
+	EXTRACT (year from first_purchase_date) as year,
+ 	COUNT (1) as nc
+FROM 
+(
+	SELECT
+		c.customer_unique_id,
+		min(o.order_purchase_timestamp) as first_purchase_date
+	FROM orders_dataset o
+	JOIN customers_dataset c
+	ON o.customer_id = c.customer_id
+	GROUP BY 1,
+) tmpB
+GROUP BY 1;
+
+* Menampilkan jumlah customer yang melakukan pembelian lebih dari satu kali (repeat order) pada masing-masing tahun (Hint: Pelanggan yang melakukan repeat order adalah pelanggan yang melakukan order lebih dari 1 kali)
+
+CREATE TABLE repeat_order AS
+SELECT
+      year,
+      COUNT(DISTINCT customer_unique_id) as ro
+FROM
+(
+	SELECT
+    		EXTRACT (year from o.order_purchase_timestamp) as year,
+    		c.customer_unique_id,
+    		COUNT (1) as frequency
+	FROM orders_dataset o
+	JOIN customers_dataset c
+	ON o.customer_id = c.customer_id
+	GROUP BY 1, 2
+	HAVING COUNT (1) > 2
+) tmpC
+GROUP BY 1;
+
+* Menampilkan rata-rata jumlah order yang dilakukan customer untuk masing-masing tahun (Hint: Hitung frekuensi order (berapa kali order) untuk masing-masing customer terlebih dahulu)
+
+CREATE TABLE jumlah_order AS
+SELECT
+       year,
+       round(avg(frequency),3) as avg_order
+FROM
+(
+       SELECT
+    		EXTRACT (year from o.order_purchase_timestamp) as year,
+    		c.customer_unique_id,
+    		COUNT (1) as frequency
+	FROM orders_dataset o
+	JOIN customers_dataset c
+	ON o.customer_id = c.customer_id
+	GROUP BY 1, 2
+) tmpD
+GROUP BY 1;
+
+* Menggabungkan ketiga metrik yang telah berhasil ditampilkan menjadi satu tampilan tabel
+
+SELECT
+        a.year,
+        a.average_mau as average_mau,
+        b.nc as new_customer,
+        c.ro as repeat_order,
+        d.avg_order as average_order
+FROM customer_aktif as a
+JOIN customer_baru as b on a.year = b.year
+JOIN repeat_order as c on c.year = a.year
+JOIN jumlah_order as d on d.year = a.year;
